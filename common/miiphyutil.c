@@ -380,7 +380,12 @@ int miiphy_info(const char *devname, unsigned char addr, unsigned int *oui,
 
 	debug("MII_PHYSID2 @ 0x%x = 0x%04x\n", addr, reg);
 
-	if (reg == 0xFFFF) {
+	/* add by dpilry@gmail.com
+	 * k6206, using ethernet switch IC(IP175D) as PHY,
+	 * which have 5 PHYs, but when addr is 20~27, the register is
+	 * Switch Regisers(see IP175DLF-DS).
+	*/
+	if (reg == 0xFFFF || reg == 0x0000 || addr >= 20) {
 		/* No physical device present at this address */
 		return -1;
 	}
