@@ -140,6 +140,10 @@
 	"fdt_addr=0x83000000\0" \
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
+	"ethact=FEC1\0" \
+	"ethaddr=00:01:12:32:33:01\0" \
+	"ipaddr=10.3.19.1\0" \
+	"netmask=255.255.255.0\0" \
 	"panel=TFT43AB\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
@@ -256,6 +260,8 @@
 #define CONFIG_ENV_IS_IN_MMC
 #endif
 
+#define CONFIG_MX6UL_EVK_EMMC_REWORK
+
 #define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_SYS_MMC_ENV_PART		0	/* user area */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
@@ -325,18 +331,20 @@
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 2
 #endif
 
+
 #ifdef CONFIG_CMD_NET
+#define CONFIG_CMD_MII
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
 #define CONFIG_FEC_ENET_DEV		1
 
 #if (CONFIG_FEC_ENET_DEV == 0)
 #define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_MXC_PHYADDR          0x2
+#define CONFIG_FEC_MXC_PHYADDR          0x5
 #define CONFIG_FEC_XCV_TYPE             RMII
 #elif (CONFIG_FEC_ENET_DEV == 1)
 #define IMX_FEC_BASE			ENET2_BASE_ADDR
-#define CONFIG_FEC_MXC_PHYADDR		0x1
+#define CONFIG_FEC_MXC_PHYADDR		0x5
 #define CONFIG_FEC_XCV_TYPE		RMII
 #endif
 #define CONFIG_ETHPRIME			"FEC"
@@ -347,8 +355,14 @@
 
 #define CONFIG_IMX_THERMAL
 
+/* PCPU using 3 SPI, remove CONFIG_VIDEO */
+#define CONFIG_SPI_PCPU
+#ifdef CONFIG_SPI_PCPU
+#define CONFIG_MXC_SPI
+#endif
+
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_VIDEO
+/*#define CONFIG_VIDEO*/
 #ifdef CONFIG_VIDEO
 #define CONFIG_CFB_CONSOLE
 #define CONFIG_VIDEO_MXS

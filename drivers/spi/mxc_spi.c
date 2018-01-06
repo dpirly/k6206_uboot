@@ -64,16 +64,24 @@ static inline struct mxc_spi_slave *to_mxc_spi_slave(struct spi_slave *slave)
 void spi_cs_activate(struct spi_slave *slave)
 {
 	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
-	if (mxcs->gpio > 0)
+
+	if (mxcs->gpio > 0){
 		gpio_set_value(mxcs->gpio, mxcs->ss_pol);
+	}else{
+		puts("call spi_cs_activate(), no gpio used\n");
+	}
 }
 
 void spi_cs_deactivate(struct spi_slave *slave)
 {
 	struct mxc_spi_slave *mxcs = to_mxc_spi_slave(slave);
-	if (mxcs->gpio > 0)
+
+	if (mxcs->gpio > 0){
 		gpio_set_value(mxcs->gpio,
 			      !(mxcs->ss_pol));
+	}else{
+		puts("call spi_cs_deactivate(), no gpio used\n");
+	}
 }
 
 u32 get_cspi_div(u32 div)

@@ -298,8 +298,13 @@ struct fec_priv {
 #define FEC_RBD_CR	0x0004	/* Receive BD status: CRC error */
 #define FEC_RBD_OV	0x0002	/* Receive BD status: Receive FIFO overrun */
 #define FEC_RBD_TR	0x0001	/* Receive BD status: Frame is truncated */
+/*
 #define FEC_RBD_ERR	(FEC_RBD_LG | FEC_RBD_NO | FEC_RBD_CR | \
 			FEC_RBD_OV | FEC_RBD_TR)
+*/
+
+#define FEC_RBD_ERR	(FEC_RBD_LG | FEC_RBD_NO | \
+			FEC_RBD_OV | FEC_RBD_TR)			
 
 /* Transmit BD status bits */
 #define FEC_TBD_READY	0x8000	/* Tansmit BD status: Buffer is ready */

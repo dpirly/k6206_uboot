@@ -123,7 +123,7 @@ static int fec_mdio_read(struct ethernet_regs *eth, uint8_t phyAddr,
 	 * it's now safe to read the PHY's register
 	 */
 	val = (unsigned short)readl(&eth->mii_data);
-	debug("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
+	printf("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
 			regAddr, val);
 	return val;
 }
@@ -183,7 +183,7 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 	 * clear MII interrupt bit
 	 */
 	writel(FEC_IEVENT_MII, &eth->ievent);
-	debug("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
+	printf("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
 			regAddr, data);
 
 	return 0;
@@ -848,6 +848,8 @@ static int fec_recv(struct eth_device *dev)
 			 */
 			addr = readl(&rbd->data_pointer);
 			frame_length = readw(&rbd->data_length) - 4;
+			printf("rx len=%d, bd_status=0x%x\n", 
+			    frame_length, bd_status);
 			/*
 			 * Invalidate data cache over the buffer
 			 */
@@ -983,6 +985,8 @@ static int fec_probe(bd_t *bd, int dev_id, uint32_t base_addr,
 	uint32_t start;
 	int ret = 0;
 
+	printf("%s called\n", __func__);
+
 	/* create and fill edev struct */
 	edev = (struct eth_device *)malloc(sizeof(struct eth_device));
 	if (!edev) {
@@ -1094,6 +1098,8 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 	struct phy_device *phydev = NULL;
 #endif
 	int ret;
+
+	printf("%s called\n", __func__);
 
 #ifdef CONFIG_MX6
 	if (mx6_enet_fused(addr)) {

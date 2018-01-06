@@ -19,6 +19,7 @@
 #include <common.h>
 #include <fsl_esdhc.h>
 #include <i2c.h>
+#include <spi.h>
 #include <miiphy.h>
 #include <linux/sizes.h>
 #include <mmc.h>
@@ -89,138 +90,6 @@ DECLARE_GLOBAL_DATA_PTR;
 	PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |		\
 	PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#define IOX_SDI IMX_GPIO_NR(5, 10)
-#define IOX_STCP IMX_GPIO_NR(5, 7)
-#define IOX_SHCP IMX_GPIO_NR(5, 11)
-#define IOX_OE IMX_GPIO_NR(5, 8)
-
-static iomux_v3_cfg_t const iox_pads[] = {
-	/* IOX_SDI */
-	MX6_PAD_BOOT_MODE0__GPIO5_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),
-	/* IOX_SHCP */
-	MX6_PAD_BOOT_MODE1__GPIO5_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL),
-	/* IOX_STCP */
-	MX6_PAD_SNVS_TAMPER7__GPIO5_IO07 | MUX_PAD_CTRL(NO_PAD_CTRL),
-	/* IOX_nOE */
-	MX6_PAD_SNVS_TAMPER8__GPIO5_IO08 | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-/*
- * HDMI_nRST --> Q0
- * ENET1_nRST --> Q1
- * ENET2_nRST --> Q2
- * CAN1_2_STBY --> Q3
- * BT_nPWD --> Q4
- * CSI_RST --> Q5
- * CSI_PWDN --> Q6
- * LCD_nPWREN --> Q7
- */
-enum qn {
-	HDMI_NRST,
-	ENET1_NRST,
-	ENET2_NRST,
-	CAN1_2_STBY,
-	BT_NPWD,
-	CSI_RST,
-	CSI_PWDN,
-	LCD_NPWREN,
-};
-
-enum qn_func {
-	qn_reset,
-	qn_enable,
-	qn_disable,
-};
-
-enum qn_level {
-	qn_low = 0,
-	qn_high = 1,
-};
-
-static enum qn_level seq[3][2] = {
-	{0, 1}, {1, 1}, {0, 0}
-};
-
-static enum qn_func qn_output[8] = {
-	qn_reset, qn_reset, qn_reset, qn_enable, qn_disable, qn_reset,
-	qn_disable, qn_disable
-};
-
-static void iox74lv_init(void)
-{
-	int i;
-
-	gpio_direction_output(IOX_OE, 0);
-
-	for (i = 7; i >= 0; i--) {
-		gpio_direction_output(IOX_SHCP, 0);
-		gpio_direction_output(IOX_SDI, seq[qn_output[i]][0]);
-		udelay(500);
-		gpio_direction_output(IOX_SHCP, 1);
-		udelay(500);
-	}
-
-	gpio_direction_output(IOX_STCP, 0);
-	udelay(500);
-	/*
-	 * shift register will be output to pins
-	 */
-	gpio_direction_output(IOX_STCP, 1);
-
-	for (i = 7; i >= 0; i--) {
-		gpio_direction_output(IOX_SHCP, 0);
-		gpio_direction_output(IOX_SDI, seq[qn_output[i]][1]);
-		udelay(500);
-		gpio_direction_output(IOX_SHCP, 1);
-		udelay(500);
-	}
-	gpio_direction_output(IOX_STCP, 0);
-	udelay(500);
-	/*
-	 * shift register will be output to pins
-	 */
-	gpio_direction_output(IOX_STCP, 1);
-};
-
-void iox74lv_set(int index)
-{
-	int i;
-
-	for (i = 7; i >= 0; i--) {
-		gpio_direction_output(IOX_SHCP, 0);
-
-		if (i == index)
-			gpio_direction_output(IOX_SDI, seq[qn_output[i]][0]);
-		else
-			gpio_direction_output(IOX_SDI, seq[qn_output[i]][1]);
-		udelay(500);
-		gpio_direction_output(IOX_SHCP, 1);
-		udelay(500);
-	}
-
-	gpio_direction_output(IOX_STCP, 0);
-	udelay(500);
-	/*
-	  * shift register will be output to pins
-	  */
-	gpio_direction_output(IOX_STCP, 1);
-
-	for (i = 7; i >= 0; i--) {
-		gpio_direction_output(IOX_SHCP, 0);
-		gpio_direction_output(IOX_SDI, seq[qn_output[i]][1]);
-		udelay(500);
-		gpio_direction_output(IOX_SHCP, 1);
-		udelay(500);
-	}
-
-	gpio_direction_output(IOX_STCP, 0);
-	udelay(500);
-	/*
-	  * shift register will be output to pins
-	  */
-	gpio_direction_output(IOX_STCP, 1);
-};
-
 
 #ifdef CONFIG_SYS_I2C_MXC
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
@@ -235,6 +104,20 @@ static struct i2c_pads_info i2c_pad_info1 = {
 		.i2c_mode = MX6_PAD_UART4_RX_DATA__I2C1_SDA | PC,
 		.gpio_mode = MX6_PAD_UART4_RX_DATA__GPIO1_IO29 | PC,
 		.gp = IMX_GPIO_NR(1, 29),
+	},
+};
+
+/* I2C2 for ADXL343BCCZ */
+static struct i2c_pads_info i2c_pad_info2 = {
+	.scl = {
+		.i2c_mode =  MX6_PAD_UART5_TX_DATA__I2C2_SCL | PC,
+		.gpio_mode = MX6_PAD_UART5_TX_DATA__GPIO1_IO30 | PC,
+		.gp = IMX_GPIO_NR(1, 30),
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_UART5_RX_DATA__I2C2_SDA | PC,
+		.gpio_mode = MX6_PAD_UART5_RX_DATA__GPIO1_IO31 | PC,
+		.gp = IMX_GPIO_NR(1, 31),
 	},
 };
 
@@ -678,6 +561,8 @@ static void setup_iomux_fec(int fec_id)
 
 int board_eth_init(bd_t *bis)
 {
+	printf("call board_eth_init()\n");
+	
 	setup_iomux_fec(CONFIG_FEC_ENET_DEV);
 
 	return fecmxc_initialize_multi(bis, CONFIG_FEC_ENET_DEV,
@@ -688,6 +573,8 @@ static int setup_fec(int fec_id)
 {
 	struct iomuxc *const iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
 	int ret;
+
+	printf("call setup_fec(%d)\n", fec_id);
 
 	if (fec_id == 0) {
 		if (check_module_fused(MX6_MODULE_ENET1))
@@ -722,7 +609,6 @@ static int setup_fec(int fec_id)
 
 int board_phy_config(struct phy_device *phydev)
 {
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1f, 0x8190);
 
 	if (phydev->drv->config)
 		phydev->drv->config(phydev);
@@ -814,17 +700,144 @@ int board_early_init_f(void)
 	return 0;
 }
 
+
+#define CONFIG_SPI_PCPU
+#ifdef CONFIG_SPI_PCPU
+
+#define ECSPI_PAD_CTRL (PAD_CTL_SRE_FAST | PAD_CTL_SPEED_MED | \
+		PAD_CTL_PUS_100K_DOWN | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
+
+static iomux_v3_cfg_t const pcpu_ecspi1_pads[] = {
+	MX6_PAD_CSI_DATA04__ECSPI1_SCLK | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	/*MX6_PAD_CSI_DATA05__ECSPI1_SS0  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),*/
+	MX6_PAD_CSI_DATA05__GPIO4_IO26  | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_CSI_DATA06__ECSPI1_MOSI | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	MX6_PAD_CSI_DATA07__ECSPI1_MISO | MUX_PAD_CTRL(ECSPI_PAD_CTRL)
+};
+
+static iomux_v3_cfg_t const pcpu_ecspi2_pads[] = {
+	MX6_PAD_CSI_DATA00__ECSPI2_SCLK | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	/*MX6_PAD_CSI_DATA01__ECSPI2_SS0  | MUX_PAD_CTRL(ECSPI_PAD_CTRL), */
+	MX6_PAD_CSI_DATA01__GPIO4_IO22  | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_CSI_DATA02__ECSPI2_MOSI | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	MX6_PAD_CSI_DATA03__ECSPI2_MISO | MUX_PAD_CTRL(ECSPI_PAD_CTRL)
+};
+
+static iomux_v3_cfg_t const pcpu_ecspi3_pads[] = {
+	MX6_PAD_NAND_CE0_B__ECSPI3_SCLK  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	/*MX6_PAD_NAND_READY_B__ECSPI3_SS0 | MUX_PAD_CTRL(ECSPI_PAD_CTRL),*/
+	MX6_PAD_NAND_READY_B__GPIO4_IO12 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_NAND_CE1_B__ECSPI3_MOSI  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
+	MX6_PAD_NAND_CLE__ECSPI3_MISO    | MUX_PAD_CTRL(ECSPI_PAD_CTRL)
+};
+
+int board_spi_cs_gpio(unsigned bus, unsigned cs)
+{
+	int ret = -1;
+
+	switch(bus){
+		case 0:
+			ret = IMX_GPIO_NR(4, 26);
+		break;
+
+		case 1:
+			ret = IMX_GPIO_NR(4, 22);
+		break;
+
+		case 2:
+			ret = IMX_GPIO_NR(4, 12);
+		break;
+	}
+	
+	if(ret > 0)
+		gpio_direction_output(ret, 1);
+		
+	return ret;
+}
+
+static void setup_pcpu(void)
+{
+	u32 cspi_clk;
+	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi1_pads, ARRAY_SIZE(pcpu_ecspi1_pads));
+	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi2_pads, ARRAY_SIZE(pcpu_ecspi2_pads));
+	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi3_pads, ARRAY_SIZE(pcpu_ecspi3_pads));
+
+	enable_spi_clk(1, 0);
+	enable_spi_clk(1, 1);
+	enable_spi_clk(1, 2);
+
+	cspi_clk = mxc_get_clock(MXC_CSPI_CLK);
+	printf("get_cspi_clk() = %d\n", cspi_clk);
+	
+	return;
+}
+
+static struct spi_slave *slave;
+static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
+				char * const argv[])
+{
+	int bus;
+	u32 addr;
+	u32 data;
+	u32 tmp;
+	int ret;
+	
+	if(argc != 4) /* arg0 is cmd */
+		return CMD_RET_USAGE;
+	
+	bus  = simple_strtoul(argv[1], NULL, 16);
+	addr = simple_strtoul(argv[2], NULL, 16);
+	data = simple_strtoul(argv[3], NULL, 16);
+
+	tmp = ((addr & 0xff) << 24) | (data & 0xffffff);
+	
+	printf("bus=0x%x, addr=0x%x, data=0x%x, spi transfer=0x%x\n",
+		bus, addr, data, tmp);
+	
+	slave = spi_setup_slave(bus, IMX_GPIO_NR(4, 26), 500 * 1000, 0);
+	
+	if(slave){
+		spi_claim_bus(slave);
+		
+		tmp = htonl(tmp);
+		ret = spi_xfer(slave, 32, &tmp, NULL, SPI_XFER_BEGIN | SPI_XFER_END);
+		if(ret){
+			printf("call spi_xfer() error, ret =%d\n", ret);
+		}
+		
+		spi_release_bus(slave);
+	}
+	
+	return CMD_RET_SUCCESS;
+}
+
+
+U_BOOT_CMD(
+	pcpu_mw,	4,	0,	do_pcpu_mw,
+	"write data to Programme Contorl Power Unit(PCPU)",
+	"<ch> <addr> <data>\n"
+	"    - write data to PCPU through SPI bus\n"
+	"      ch: channel.\n"
+	"      addr: address.\n"
+	"      data: data content.\n"
+);
+
+
+#endif
+
 int board_init(void)
 {
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-	imx_iomux_v3_setup_multiple_pads(iox_pads, ARRAY_SIZE(iox_pads));
-
-	iox74lv_init();
 
 #ifdef CONFIG_SYS_I2C_MXC
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
+	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
+#endif
+
+#ifdef CONFIG_SPI_PCPU
+	setup_pcpu();
 #endif
 
 #ifdef	CONFIG_FEC_MXC
@@ -882,11 +895,13 @@ int board_late_init(void)
 
 int checkboard(void)
 {
+	/*
 	if (is_mx6ul_9x9_evk())
 		puts("Board: MX6UL 9x9 EVK\n");
 	else
 		puts("Board: MX6UL 14x14 EVK\n");
-
+	*/
+	puts("Board: Welzek K6206 DC Source\n");
 	return 0;
 }
 

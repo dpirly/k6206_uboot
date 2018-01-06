@@ -22,6 +22,11 @@
 #include <linux/err.h>
 #include <linux/compiler.h>
 
+/*
+#undef _DEBUG
+#define _DEBUG (1)
+*/
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Generic PHY support and helper functions */
@@ -41,6 +46,8 @@ static int genphy_config_advert(struct phy_device *phydev)
 	int oldadv, adv, bmsr;
 	int err, changed = 0;
 
+    printf("%s called()\n", __func__);
+    
 	/* Only allow advertising what this PHY supports */
 	phydev->advertising &= phydev->supported;
 	advertise = phydev->advertising;
@@ -130,6 +137,8 @@ static int genphy_setup_forced(struct phy_device *phydev)
 	int err;
 	int ctl = BMCR_ANRESTART;
 
+    printf("%s called()\n", __func__);
+    
 	phydev->pause = phydev->asym_pause = 0;
 
 	if (SPEED_1000 == phydev->speed)
@@ -182,6 +191,8 @@ int genphy_config_aneg(struct phy_device *phydev)
 {
 	int result;
 
+    printf("%s called()\n", __func__);
+    
 	if (AUTONEG_ENABLE != phydev->autoneg)
 		return genphy_setup_forced(phydev);
 
@@ -222,6 +233,8 @@ int genphy_update_link(struct phy_device *phydev)
 {
 	unsigned int mii_reg;
 
+    printf("%s called()\n", __func__);
+    
 	/*
 	 * Wait if the link is up, and autonegotiation is in progress
 	 * (ie - we're capable and it's not done)
@@ -291,6 +304,8 @@ int genphy_parse_link(struct phy_device *phydev)
 {
 	int mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
 
+    printf("%s called()\n", __func__);
+    
 	/* We're using autonegotiation */
 	if (phydev->autoneg == AUTONEG_ENABLE) {
 		u32 lpa = 0;
@@ -383,6 +398,8 @@ int genphy_config(struct phy_device *phydev)
 	int val;
 	u32 features;
 
+	printf("%s called()\n", __func__);
+
 	features = (SUPPORTED_TP | SUPPORTED_MII
 			| SUPPORTED_AUI | SUPPORTED_FIBRE |
 			SUPPORTED_BNC);
@@ -431,6 +448,8 @@ int genphy_config(struct phy_device *phydev)
 
 int genphy_startup(struct phy_device *phydev)
 {
+    printf("%s called()\n", __func__);
+    
 	genphy_update_link(phydev);
 	genphy_parse_link(phydev);
 
@@ -458,6 +477,8 @@ static LIST_HEAD(phy_drivers);
 
 int phy_init(void)
 {
+    printf("%s called()\n", __func__);
+    
 #ifdef CONFIG_PHY_AQUANTIA
 	phy_aquantia_init();
 #endif
@@ -557,6 +578,8 @@ static int phy_probe(struct phy_device *phydev)
 {
 	int err = 0;
 
+    printf("%s called()\n", __func__);
+    
 	phydev->advertising = phydev->supported = phydev->drv->features;
 	phydev->mmds = phydev->drv->mmds;
 
@@ -572,7 +595,8 @@ static struct phy_driver *generic_for_interface(phy_interface_t interface)
 	if (is_10g_interface(interface))
 		return &gen10g_driver;
 #endif
-
+    printf("call generic_for_interface()\n");
+    
 	return &genphy_driver;
 }
 
@@ -598,6 +622,8 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 					    phy_interface_t interface)
 {
 	struct phy_device *dev;
+
+	printf("%s called()\n", __func__);
 
 	/* We allocate the device, and initialize the
 	 * default values */
@@ -642,6 +668,8 @@ int __weak get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id)
 {
 	int phy_reg;
 
+	printf("%s called()\n", __func__);
+
 	/* Grab the bits from PHYIR1, and put them
 	 * in the upper half */
 	phy_reg = bus->read(bus, addr, devad, MII_PHYSID1);
@@ -666,6 +694,9 @@ static struct phy_device *create_phy_by_mask(struct mii_dev *bus,
 		unsigned phy_mask, int devad, phy_interface_t interface)
 {
 	u32 phy_id = 0xffffffff;
+
+	printf("%s called()\n", __func__);
+	
 	while (phy_mask) {
 		int addr = ffs(phy_mask) - 1;
 		int r = get_phy_id(bus, addr, devad, &phy_id);
@@ -734,6 +765,7 @@ static struct phy_device *get_phy_device_by_mask(struct mii_dev *bus,
 static struct phy_device *get_phy_device(struct mii_dev *bus, int addr,
 					 phy_interface_t interface)
 {
+    printf("%s called()\n", __func__);
 	return get_phy_device_by_mask(bus, 1 << addr, interface);
 }
 
@@ -743,6 +775,8 @@ int phy_reset(struct phy_device *phydev)
 	int timeout = 500;
 	int devad = MDIO_DEVAD_NONE;
 
+    printf("%s called()\n", __func__);
+    
 	if (phydev->flags & PHY_FLAG_BROKEN_RESET)
 		return 0;
 
@@ -823,6 +857,8 @@ void phy_connect_dev(struct phy_device *phydev, struct udevice *dev)
 void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev)
 #endif
 {
+    printf("%s called\n", __func__);
+    
 	/* Soft Reset the PHY */
 	phy_reset(phydev);
 	if (phydev->dev && phydev->dev != dev) {
