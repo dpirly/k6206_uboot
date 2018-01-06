@@ -707,6 +707,10 @@ int board_early_init_f(void)
 #define ECSPI_PAD_CTRL (PAD_CTL_SRE_FAST | PAD_CTL_SPEED_MED | \
 		PAD_CTL_PUS_100K_DOWN | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
+static iomux_v3_cfg_t const pcpu_cpld_init_pads[] = {
+	MX6_PAD_UART2_RTS_B__GPIO1_IO23 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
 static iomux_v3_cfg_t const pcpu_ecspi1_pads[] = {
 	MX6_PAD_CSI_DATA04__ECSPI1_SCLK | MUX_PAD_CTRL(ECSPI_PAD_CTRL),
 	/*MX6_PAD_CSI_DATA05__ECSPI1_SS0  | MUX_PAD_CTRL(ECSPI_PAD_CTRL),*/
@@ -758,6 +762,14 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 static void setup_pcpu(void)
 {
 	u32 cspi_clk;
+
+	/* init cpld */
+	imx_iomux_v3_setup_multiple_pads(pcpu_cpld_init_pads, ARRAY_SIZE(pcpu_cpld_init_pads));
+	gpio_direction_output(IMX_GPIO_NR(1, 23), 0);
+	udelay(10*1000);
+	gpio_direction_output(IMX_GPIO_NR(1, 23), 1);
+
+	/* SPI setting */
 	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi1_pads, ARRAY_SIZE(pcpu_ecspi1_pads));
 	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi2_pads, ARRAY_SIZE(pcpu_ecspi2_pads));
 	imx_iomux_v3_setup_multiple_pads(pcpu_ecspi3_pads, ARRAY_SIZE(pcpu_ecspi3_pads));
@@ -768,7 +780,7 @@ static void setup_pcpu(void)
 
 	cspi_clk = mxc_get_clock(MXC_CSPI_CLK);
 	printf("get_cspi_clk() = %d\n", cspi_clk);
-	
+
 	return;
 }
 
@@ -780,6 +792,7 @@ static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 	u32 addr;
 	u32 data;
 	u32 tmp;
+	u32 rddata;
 	int ret;
 	
 	if(argc != 4) /* arg0 is cmd */
@@ -790,24 +803,26 @@ static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 	data = simple_strtoul(argv[3], NULL, 16);
 
 	tmp = ((addr & 0xff) << 24) | (data & 0xffffff);
-	
-	printf("bus=0x%x, addr=0x%x, data=0x%x, spi transfer=0x%x\n",
-		bus, addr, data, tmp);
-	
+
 	slave = spi_setup_slave(bus, IMX_GPIO_NR(4, 26), 500 * 1000, 0);
 	
 	if(slave){
 		spi_claim_bus(slave);
 		
 		tmp = htonl(tmp);
-		ret = spi_xfer(slave, 32, &tmp, NULL, SPI_XFER_BEGIN | SPI_XFER_END);
+		ret = spi_xfer(slave, 32, &tmp, &rddata, SPI_XFER_BEGIN | SPI_XFER_END);
 		if(ret){
 			printf("call spi_xfer() error, ret =%d\n", ret);
 		}
-		
+
+		rddata = ntohl(rddata);
 		spi_release_bus(slave);
+
+		printf("bus=0x%x, addr=0x%x, data=0x%x, spi transfer=0x%x, spi recv=0x%x\n",
+			bus, addr, data, tmp, rddata);
+
 	}
-	
+
 	return CMD_RET_SUCCESS;
 }
 

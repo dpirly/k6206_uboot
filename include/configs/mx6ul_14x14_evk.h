@@ -84,10 +84,12 @@
 #define CONFIG_SYS_I2C_SPEED		100000
 
 /* PMIC only for 9X9 EVK */
+/*
 #define CONFIG_POWER
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_PFUZE3000
 #define CONFIG_POWER_PFUZE3000_I2C_ADDR  0x08
+*/
 #endif
 
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
@@ -141,9 +143,10 @@
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"ethact=FEC1\0" \
-	"ethaddr=00:01:12:32:33:01\0" \
+	"ethaddr=00:01:02:03:04:05\0" \
 	"ipaddr=10.3.19.1\0" \
 	"netmask=255.255.255.0\0" \
+	"serverip=10.3.19.222" \
 	"panel=TFT43AB\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
