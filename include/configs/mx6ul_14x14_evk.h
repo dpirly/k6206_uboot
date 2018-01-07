@@ -146,7 +146,7 @@
 	"ethaddr=00:01:02:03:04:05\0" \
 	"ipaddr=10.3.19.1\0" \
 	"netmask=255.255.255.0\0" \
-	"serverip=10.3.19.222" \
+	"serverip=10.3.19.222\0" \
 	"panel=TFT43AB\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
