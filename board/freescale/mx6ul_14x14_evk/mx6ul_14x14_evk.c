@@ -871,13 +871,14 @@ static int fec_set_hwaddr(int eth, u8 *mac)
 	if(eth == 0)
 		fec_base = 0x02188000;
 	else
-		fec_base = 0x02188000;
+		fec_base = 0x020b4000;
 
+/*
 	writel(0, fec_base + 0x118);
 	writel(0, fec_base + 0x11c);
 	writel(0, fec_base + 0x120);
 	writel(0, fec_base + 0x124);
-
+*/
 	/*
 	 * Set physical address
 	 */
