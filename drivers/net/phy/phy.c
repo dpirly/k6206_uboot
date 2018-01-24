@@ -46,8 +46,6 @@ static int genphy_config_advert(struct phy_device *phydev)
 	int oldadv, adv, bmsr;
 	int err, changed = 0;
 
-    printf("%s called()\n", __func__);
-    
 	/* Only allow advertising what this PHY supports */
 	phydev->advertising &= phydev->supported;
 	advertise = phydev->advertising;
@@ -191,8 +189,6 @@ int genphy_config_aneg(struct phy_device *phydev)
 {
 	int result;
 
-    printf("%s called()\n", __func__);
-    
 	if (AUTONEG_ENABLE != phydev->autoneg)
 		return genphy_setup_forced(phydev);
 

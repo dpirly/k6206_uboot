@@ -48,7 +48,9 @@
  * #include "imx6_spl.h"
 */
 
+/* use fixed borad name
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+*/
 
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -138,12 +140,11 @@
 	"console=ttymxc0\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
-	"fdt_file=undefined\0" \
+	"fdt_file=imx6ul-k6206.dtb\0" \
 	"fdt_addr=0x83000000\0" \
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"ethact=FEC1\0" \
-	"ethaddr=00:01:02:03:04:05\0" \
 	"ipaddr=10.3.19.1\0" \
 	"netmask=255.255.255.0\0" \
 	"serverip=10.3.19.222\0" \
@@ -204,9 +205,9 @@
 		"findfdt="\
 			"if test $fdt_file = undefined; then " \
 				"if test $board_name = EVK && test $board_rev = 9X9; then " \
-					"setenv fdt_file imx6ul-9x9-evk.dtb; fi; " \
+					"setenv fdt_file imx6ul-9x9-evk.dtb; echo fdt_file=14x14_evk; fi; " \
 				"if test $board_name = EVK && test $board_rev = 14X14; then " \
-					"setenv fdt_file imx6ul-14x14-evk.dtb; fi; " \
+					"setenv fdt_file imx6ul-14x14-evk.dtb; echo fdt_file=14x14_evk; fi; " \
 				"if test $fdt_file = undefined; then " \
 					"echo WARNING: Could not determine dtb to use; fi; " \
 			"fi;\0" \
@@ -259,7 +260,7 @@
 #define CONFIG_SYS_USE_NAND
 #define CONFIG_ENV_IS_IN_NAND
 #else
-#define CONFIG_FSL_QSPI
+/*#define CONFIG_FSL_QSPI */
 #define CONFIG_ENV_IS_IN_MMC
 #endif
 
@@ -327,8 +328,8 @@
 #define CONFIG_USB_EHCI_MX6
 #define CONFIG_USB_STORAGE
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_ASIX
+/* #define CONFIG_USB_HOST_ETHER */
+/* #define CONFIG_USB_ETHER_ASIX */
 #define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS   0
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 2

@@ -761,8 +761,8 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 
 static void setup_pcpu(void)
 {
-	u32 cspi_clk;
-
+	printf("init CPLD\n");
+	
 	/* init cpld */
 	imx_iomux_v3_setup_multiple_pads(pcpu_cpld_init_pads, ARRAY_SIZE(pcpu_cpld_init_pads));
 	gpio_direction_output(IMX_GPIO_NR(1, 23), 0);
@@ -778,13 +778,156 @@ static void setup_pcpu(void)
 	enable_spi_clk(1, 1);
 	enable_spi_clk(1, 2);
 
-	cspi_clk = mxc_get_clock(MXC_CSPI_CLK);
-	printf("get_cspi_clk() = %d\n", cspi_clk);
+	//mxc_get_clock(MXC_CSPI_CLK);
 
 	return;
 }
 
 static struct spi_slave *slave;
+
+static int pcpu_flash_rd(int addr, void* buf, int len)
+{
+	int ret;
+	int retry;
+	u16 *pdata;
+	unsigned int mask = 1<<17 | 1<<16;
+	unsigned int tmp;
+	unsigned int spi_xfer_rx_data;
+	const unsigned int FLASH_ADDR_RD = 0x07;
+	const unsigned int FLASH_DATA_RD = 0xCA;
+	
+	pdata = (u16*)buf;
+	if (len % 2 != 0)
+		len++;
+	len /= 2; /* to u16 len */
+
+	/* spi2 */
+	slave = spi_setup_slave(2, IMX_GPIO_NR(4, 12), 500 * 1000, 0);
+
+	if(slave){
+		spi_claim_bus(slave);
+
+		while(len > 0){
+		
+			/* step 1, set flash read address */
+			tmp = (FLASH_ADDR_RD << 24) | (addr & 0xffffff);
+			tmp = htonl(tmp);
+			
+			ret = spi_xfer(slave, 32, &tmp, &spi_xfer_rx_data, SPI_XFER_BEGIN | SPI_XFER_END);
+			if(ret){
+				spi_release_bus(slave);
+				printf("spi_xfer() error =%d\n", ret);
+				return -1;
+			}
+
+			/* step 2, check status and read data */
+			retry = 100;
+			while(retry-->0){
+			
+				udelay(100);
+				
+				tmp = FLASH_DATA_RD << 24;
+
+				tmp = htonl(tmp);
+				ret = spi_xfer(slave, 32, &tmp, &spi_xfer_rx_data, SPI_XFER_BEGIN | SPI_XFER_END);
+				if(ret){
+					spi_release_bus(slave);
+					printf("spi_xfer() error =%d\n", ret);
+					return -1;
+				}
+				
+				spi_xfer_rx_data = ntohl(spi_xfer_rx_data);
+
+				if ((mask & spi_xfer_rx_data) == 0){
+					*pdata = spi_xfer_rx_data & 0xffff;
+					pdata++;
+					len--;
+					addr += 2;
+					break;
+				}
+			}
+
+			/* if busy, exit */
+			if (retry == 0){
+				spi_release_bus(slave);
+				printf("flash busy\n");
+				return -1;
+			}
+
+		}
+		spi_release_bus(slave);
+		return 0;
+	}
+
+	printf("can not open spi\n");
+	return -1;
+}
+
+
+static int fec_set_hwaddr(int eth, u8 *mac)
+{
+	uint32_t fec_base;
+	
+	if(eth == 0)
+		fec_base = 0x02188000;
+	else
+		fec_base = 0x02188000;
+
+	writel(0, fec_base + 0x118);
+	writel(0, fec_base + 0x11c);
+	writel(0, fec_base + 0x120);
+	writel(0, fec_base + 0x124);
+
+	/*
+	 * Set physical address
+	 */
+	writel((mac[0] << 24) + (mac[1] << 16) + (mac[2] << 8) + mac[3],
+			fec_base + 0xE4);
+	writel((mac[4] << 24) + (mac[5] << 16) + 0x8808, fec_base + 0xE8);
+
+	return 0;
+}
+
+
+static int set_ethernet_mac(void)
+{
+	struct mac_flash{
+		u8 mac1_flag1;
+		u8 mac1_flag2;
+		u8 mac1_addr[6];
+		
+		u8 mac2_flag1;
+		u8 mac2_flag2;
+		u8 mac2_addr[6];
+	}macs_addr;
+
+	if( pcpu_flash_rd(0xFE000, &macs_addr, sizeof(macs_addr)) != 0){
+		printf("read flash error\n");
+		return -1;
+	}
+
+	if(macs_addr.mac1_flag1 != 0xFF && macs_addr.mac1_flag2 != 0xFF && \
+		macs_addr.mac2_flag1 != 0xFF && macs_addr.mac2_flag2 != 0xFF){
+		
+		printf("MAC1 flag: 0x%x%x, address:%02X-%02X-%02X-%02X-%02X-%02X\n",
+			macs_addr.mac1_flag1, macs_addr.mac1_flag2,
+			macs_addr.mac1_addr[0], macs_addr.mac1_addr[1],
+			macs_addr.mac1_addr[2], macs_addr.mac1_addr[3],
+			macs_addr.mac1_addr[4], macs_addr.mac1_addr[5]);
+
+		printf("MAC2 flag: 0x%x%x, address:%02X-%02X-%02X-%02X-%02X-%02X\n",
+			macs_addr.mac2_flag1, macs_addr.mac2_flag2,
+			macs_addr.mac2_addr[0], macs_addr.mac2_addr[1],
+			macs_addr.mac2_addr[2], macs_addr.mac2_addr[3],
+			macs_addr.mac2_addr[4], macs_addr.mac2_addr[5]);
+
+		fec_set_hwaddr(0, macs_addr.mac1_addr);
+		fec_set_hwaddr(1, macs_addr.mac2_addr);
+	}
+	
+	return 0;
+}
+
 static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 				char * const argv[])
 {
@@ -794,7 +937,7 @@ static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 	u32 tmp;
 	u32 rddata;
 	int ret;
-	
+	int cs;
 	if(argc != 4) /* arg0 is cmd */
 		return CMD_RET_USAGE;
 	
@@ -802,9 +945,17 @@ static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 	addr = simple_strtoul(argv[2], NULL, 16);
 	data = simple_strtoul(argv[3], NULL, 16);
 
+	switch(bus){
+		case 0: cs = IMX_GPIO_NR(4, 26); break;
+		case 1: cs = IMX_GPIO_NR(4, 22); break;
+		case 2: cs = IMX_GPIO_NR(4, 12); break;
+		default:
+			return CMD_RET_USAGE;
+	}
+
 	tmp = ((addr & 0xff) << 24) | (data & 0xffffff);
 
-	slave = spi_setup_slave(bus, IMX_GPIO_NR(4, 26), 500 * 1000, 0);
+	slave = spi_setup_slave(bus, cs, 500 * 1000, 0);
 	
 	if(slave){
 		spi_claim_bus(slave);
@@ -819,8 +970,7 @@ static int do_pcpu_mw(cmd_tbl_t *cmdtp, int flag, int argc,
 		spi_release_bus(slave);
 
 		printf("bus=0x%x, addr=0x%x, data=0x%x, spi transfer=0x%x, spi recv=0x%x\n",
-			bus, addr, data, tmp, rddata);
-
+			bus, addr, data, ntohl(tmp), rddata);
 	}
 
 	return CMD_RET_SUCCESS;
@@ -853,6 +1003,7 @@ int board_init(void)
 
 #ifdef CONFIG_SPI_PCPU
 	setup_pcpu();
+	set_ethernet_mac();
 #endif
 
 #ifdef	CONFIG_FEC_MXC
