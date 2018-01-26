@@ -890,7 +890,7 @@ static int fec_set_hwaddr(int eth, u8 *mac)
 }
 
 
-static int set_ethernet_mac(void)
+int set_ethernet_mac(void)
 {
 	struct mac_flash{
 		u8 mac1_flag1;
@@ -908,7 +908,9 @@ static int set_ethernet_mac(void)
 	}
 
 	if(macs_addr.mac1_flag1 != 0xFF && macs_addr.mac1_flag2 != 0xFF && \
-		macs_addr.mac2_flag1 != 0xFF && macs_addr.mac2_flag2 != 0xFF){
+		macs_addr.mac1_flag1 != 0x00 && macs_addr.mac1_flag2 != 0x00 && \
+		macs_addr.mac2_flag1 != 0xFF && macs_addr.mac2_flag2 != 0xFF && \
+		macs_addr.mac2_flag1 != 0x00 && macs_addr.mac2_flag2 != 0x00){
 		
 		printf("MAC1 flag: 0x%x%x, address:%02X-%02X-%02X-%02X-%02X-%02X\n",
 			macs_addr.mac1_flag1, macs_addr.mac1_flag2,
@@ -924,8 +926,10 @@ static int set_ethernet_mac(void)
 
 		fec_set_hwaddr(0, macs_addr.mac1_addr);
 		fec_set_hwaddr(1, macs_addr.mac2_addr);
+	}else{
+		printf("warning, no valid ethernet mac found!\n");
 	}
-	
+
 	return 0;
 }
 
